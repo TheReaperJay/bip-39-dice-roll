@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 340" width="1200" height="340" role="img" aria-label="Warning: do not trust this repository. Verify the code yourself, then generate your seed offline.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a0508"/>
+      <stop offset="1" stop-color="#070203"/>
+    </linearGradient>
+    <pattern id="hazard" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="20" height="40" fill="#9e1018"/>
+      <rect x="20" width="20" height="40" fill="#120306"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="340" fill="url(#hazard)"/>
+  <rect x="16" y="16" width="1168" height="308" rx="10" fill="url(#bg)" stroke="#e0262f" stroke-width="3"/>
+
+  <!-- skull -->
+  <g transform="translate(60 62)">
+    <path d="M100 0 C44 0 8 38 8 92 C8 126 24 150 46 162 L48 196 C66 210 134 210 152 196 L154 162 C176 150 192 126 192 92 C192 38 156 0 100 0 Z" fill="#d8ccb6"/>
+    <ellipse cx="66" cy="96" rx="26" ry="29" fill="#0a0304"/>
+    <ellipse cx="134" cy="96" rx="26" ry="29" fill="#0a0304"/>
+    <circle cx="66" cy="99" r="7" fill="#ff3a44"/>
+    <circle cx="134" cy="99" r="7" fill="#ff3a44"/>
+    <path d="M100 124 l-13 28 h26 z" fill="#0a0304"/>
+    <path d="M58 172 H142 M72 172 v26 M86 172 v28 M100 172 v28 M114 172 v28 M128 172 v26" stroke="#3a2a28" stroke-width="4" fill="none"/>
+  </g>
+
+  <text x="300" y="118" fill="#ff4a52" font-family="Impact, 'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-size="66" font-weight="900" textLength="850" lengthAdjust="spacingAndGlyphs">DO NOT TRUST THIS REPO</text>
+  <text x="302" y="178" fill="#f2e9dc" font-family="'Helvetica Neue', Arial, sans-serif" font-size="30" font-weight="700">Not this one. Not anyone's. Verify the code yourself.</text>
+  <text x="302" y="226" fill="#c9bfb2" font-family="'Helvetica Neue', Arial, sans-serif" font-size="25">Have an LLM review index.html before you use it.</text>
+  <text x="302" y="264" fill="#c9bfb2" font-family="'Helvetica Neue', Arial, sans-serif" font-size="25">Then make your seed offline: an old laptop with no Wi-Fi, or Tails.</text>
+</svg>

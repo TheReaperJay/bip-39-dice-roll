@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; connect-src 'none';">
+  <meta name="theme-color" content="#070508">
+  <title>The Reaper's Ledger — BIP39 Dice Roll Seed</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --void: #070508;
+      --crypt: #110c12;
+      --slab: #19121a;
+      --slab-hi: #231a24;
+      --well: #0a070b;
+      --edge: #33262f;
+      --edge-hot: #5a2a30;
+      --bone: #ece4d6;
+      --bone-mid: #b9b0a2;
+      --bone-dim: #9d9488;
+      --oxblood: #5c0a0e;
+      --blood: #9e1018;
+      --blood-hot: #e0262f;
+      --blood-glow: rgba(224, 38, 47, 0.35);
+      --grave: #8fbf7a;
+      --amber: #d9a441;
+      --font-body: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
+      /* Type scale: every font-size in this file is one of these six steps.
+         14px is the floor — nothing on screen renders smaller. */
+      --fs-label: 0.875rem;    /* 14px: column headers, position numbers, key caps */
+      --fs-small: 0.9375rem;   /* 15px: helper text, notes, statuses, warnings */
+      --fs-body: 1.0625rem;    /* 17px: body, inputs, buttons, words, hex, table cells */
+      --fs-lead: 1.375rem;     /* 22px: dice entry, seed-length numbers */
+      --fs-heading: 1.75rem;   /* 28px: card titles */
+      --fs-title: clamp(2.25rem, 6vw, 3.25rem);
+      --font-display: "P052", "Palatino Linotype", Palatino, "URW Palladio L", "Book Antiqua", Georgia, serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+    ::selection { background: var(--blood); color: var(--bone); }
+    html { background: var(--void); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font: var(--fs-body)/1.6 var(--font-body);
+      color: var(--bone);
+      background:
+        radial-gradient(ellipse 70% 40% at 50% 0%, rgba(158, 16, 24, 0.28), transparent 70%),
+        radial-gradient(ellipse 120% 80% at 50% 120%, rgba(40, 20, 40, 0.9), transparent 60%),
+        linear-gradient(180deg, #0c070d 0%, var(--void) 50%);
+      background-attachment: fixed;
+    }
+    /* Vignette darkens the screen edges so the cards read as lit from above. */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.75) 100%);
+    }
+    .fog {
+      position: fixed;
+      left: -20%;
+      right: -20%;
+      bottom: -40px;
+      height: 260px;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 30% 60% at 20% 80%, rgba(150, 140, 160, 0.10), transparent 70%),
+        radial-gradient(ellipse 35% 55% at 60% 90%, rgba(150, 140, 160, 0.08), transparent 70%),
+        radial-gradient(ellipse 25% 50% at 85% 75%, rgba(150, 140, 160, 0.09), transparent 70%);
+      filter: blur(8px);
+      animation: fog-drift 40s ease-in-out infinite alternate;
+    }
+    @keyframes fog-drift { to { transform: translateX(8%); } }
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 24px 24px 80px;
+    }
+    svg.icon { width: 18px; height: 18px; flex: none; }
+
+    /* ---------- header ---------- */
+    .reaper-header { text-align: center; padding-top: 20px; }
+    .reaper-mark {
+      display: block;
+      width: 170px;
+      height: auto;
+      margin: 0 auto -6px;
+      filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.8));
+    }
+    .reaper-eye { animation: eye-pulse 4s ease-in-out infinite; }
+    @keyframes eye-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+    h1.reaper-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--fs-title);
+      font-variant: small-caps;
+      line-height: 1.05;
+      letter-spacing: 0.02em;
+      color: var(--bone);
+      text-shadow: 0 0 1px rgba(255, 255, 255, 0.2), 0 2px 0 #000, 0 0 28px var(--blood-glow), 0 0 60px rgba(158, 16, 24, 0.35);
+    }
+    h1.reaper-title .blood-mark { color: var(--blood-hot); }
+    .reaper-tagline {
+      margin: 10px 0 0;
+      color: var(--bone-mid);
+      font-size: var(--fs-small);
+      letter-spacing: 0.02em;
+    }
+    .blood-drip { display: block; width: 100%; height: 46px; margin-top: 22px; }
+    .blood-drip .falling-drop { animation: drop-fall 3.2s cubic-bezier(0.5, 0, 0.9, 0.6) infinite; }
+    @keyframes drop-fall {
+      0% { transform: translateY(0); opacity: 0; }
+      15% { opacity: 1; }
+      100% { transform: translateY(40px); opacity: 0; }
+    }
+
+    /* ---------- cards ---------- */
+    .card {
+      position: relative;
+      margin-top: 28px;
+      padding: 28px 30px 30px;
+      border-radius: 14px;
+      border: 1px solid var(--edge);
+      background:
+        repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.012) 0 2px, transparent 2px 6px),
+        linear-gradient(180deg, var(--slab-hi) 0%, var(--slab) 30%, var(--crypt) 100%);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        inset 0 0 80px rgba(0, 0, 0, 0.45),
+        0 24px 50px -10px rgba(0, 0, 0, 0.85);
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      top: -1px;
+      height: 2px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent, var(--blood-hot), transparent);
+      box-shadow: 0 0 14px var(--blood-glow);
+    }
+    .card-head { display: flex; align-items: center; gap: 14px; }
+    .card-head h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--fs-heading);
+      line-height: 1.25;
+      letter-spacing: 0.01em;
+      color: var(--bone);
+    }
+    .card-intro { margin: 14px 0 18px; color: var(--bone-mid); font-size: var(--fs-body); }
+    .sigil {
+      flex: none;
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #c21a22, var(--oxblood));
+      box-shadow: 0 0 0 1px #000, 0 0 0 3px #3a1216, 0 0 18px var(--blood-glow);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--fs-body);
+      color: var(--bone);
+    }
+    .field-label {
+      display: block;
+      margin: 22px 0 10px;
+      padding: 0;
+      font-size: var(--fs-small);
+      font-weight: 600;
+      color: var(--bone-mid);
+    }
+    .field-label .hint { font-weight: 400; color: var(--bone-dim); }
+    .note { margin: 10px 0 0; color: var(--bone-dim); font-size: var(--fs-small); }
+    .note strong { color: var(--bone); }
+
+    /* ---------- seed length + index type ---------- */
+    .setup-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; }
+    .setup { flex: 0 0 auto; min-width: 0; margin: 0; padding: 0; border: 0; }
+    .setup-length { flex: 1 1 260px; max-width: 50%; }
+    .select {
+      width: 100%;
+      appearance: none;
+      padding: 12px 40px 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--edge);
+      background-color: var(--well);
+      background-image: linear-gradient(45deg, transparent 50%, var(--bone-dim) 50%), linear-gradient(135deg, var(--bone-dim) 50%, transparent 50%);
+      background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%;
+      background-size: 6px 6px;
+      background-repeat: no-repeat;
+      color: var(--bone);
+      font: 600 var(--fs-body) var(--font-body);
+      cursor: pointer;
+    }
+    .select:focus-visible { outline: 2px solid var(--bone); outline-offset: 2px; }
+    .select option { background: #120d13; color: var(--bone); }
+    .seg { display: inline-flex; border: 1px solid var(--edge); border-radius: 10px; overflow: hidden; background: var(--well); }
+    .seg label { display: flex; cursor: pointer; }
+    .seg span { display: flex; flex: 1; align-items: center; justify-content: center; text-align: center; padding: 12px 20px; color: var(--bone-dim); font: 600 var(--fs-body) var(--font-body); }
+    .seg label:hover span { color: var(--bone); }
+    .seg input:checked + span { background: linear-gradient(180deg, var(--blood-hot), var(--oxblood)); color: #fff; }
+    .seg input:focus-visible + span { outline: 2px solid var(--bone); outline-offset: -4px; }
+
+    /* ---------- dice pad ---------- */
+    .dice-pad { display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px; margin-top: 24px; }
+    .die {
+      display: grid;
+      grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+      aspect-ratio: 1;
+      padding: 16%;
+      border-radius: 18%;
+      border: 1px solid #cfc3ad;
+      background: linear-gradient(145deg, #fbf6ea 0%, #ece2cd 55%, #d9cbb0 100%);
+      box-shadow: inset 0 2px 1px rgba(255, 255, 255, 0.9), inset 0 -4px 6px rgba(120, 96, 60, 0.35), 0 4px 0 #9b8b6e, 0 8px 14px rgba(0, 0, 0, 0.55);
+      cursor: pointer;
+    }
+    .die:hover:not(:disabled) { filter: brightness(1.04); }
+    .die:focus-visible { outline: 2px solid var(--bone); outline-offset: 4px; }
+    .die:disabled { opacity: 0.4; cursor: not-allowed; }
+    .die i {
+      width: 78%;
+      aspect-ratio: 1;
+      place-self: center;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%, #3a0a0e, #120304 70%);
+      box-shadow: inset 0 2px 2px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+    /* One state for every roll, from a click or a key press: the face
+       presses down and its dots turn red together, for DIE_FLASH_MS, with
+       no transition, so the two are always in sync. */
+    .die.rolled {
+      transform: translateY(3px);
+      box-shadow: inset 0 2px 1px rgba(255, 255, 255, 0.9), inset 0 -4px 6px rgba(120, 96, 60, 0.35), 0 1px 0 #9b8b6e, 0 3px 6px rgba(0, 0, 0, 0.5);
+    }
+    .die.rolled i { background: radial-gradient(circle at 40% 35%, #ff4a52, #b3141c 70%); }
+    .die .p1 { grid-area: 1 / 1; }
+    .die .p3 { grid-area: 1 / 3; }
+    .die .p4 { grid-area: 2 / 1; }
+    .die .p5 { grid-area: 2 / 2; }
+    .die .p6 { grid-area: 2 / 3; }
+    .die .p7 { grid-area: 3 / 1; }
+    .die .p9 { grid-area: 3 / 3; }
+    .rolls-box {
+      min-height: 3.4em;
+      margin-top: 22px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--edge);
+      background: var(--well);
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.6);
+      font: 600 var(--fs-lead)/1.4 var(--font-mono);
+      letter-spacing: 0.08em;
+      color: var(--bone);
+      /* Equal-width columns so every group lines up regardless of its number. */
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(5.4em, 1fr));
+      gap: 2px 12px;
+      align-content: start;
+    }
+    .roll-group { white-space: nowrap; }
+    /* Two-digit slot (max 52 groups), right-aligned, so 1: and 10: line up. */
+    .roll-group-no { display: inline-block; width: 2ch; text-align: right; color: var(--bone-dim); font-size: var(--fs-body); letter-spacing: 0; }
+    .roll-group-sep { margin-right: 2px; color: var(--bone-dim); font-size: var(--fs-body); letter-spacing: 0; }
+
+    /* ---------- text inputs ---------- */
+
+    /* ---------- roll progress ---------- */
+    .vial-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 14px; }
+    .vial {
+      position: relative;
+      flex: 1 1 240px;
+      height: 14px;
+      overflow: hidden;
+      border-radius: 99px;
+      border: 1px solid var(--edge);
+      background: var(--well);
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7);
+    }
+    .vial-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0;
+      border-radius: 99px;
+      background: linear-gradient(180deg, #ff4a52 0%, var(--blood-hot) 35%, var(--blood) 70%, var(--oxblood) 100%);
+      box-shadow: 0 0 14px var(--blood-glow);
+      transition: width 0.2s ease-out;
+    }
+    .vial-fill::after {
+      content: "";
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      top: 2px;
+      height: 3px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.28);
+    }
+    .vial.full { border-color: var(--blood-hot); box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7), 0 0 16px var(--blood-glow); }
+    .roll-count { font: 600 var(--fs-body) var(--font-mono); color: var(--bone); white-space: nowrap; }
+    .roll-count .roll-meta { color: var(--bone-dim); }
+    .vial.full + .roll-count .roll-meta { color: var(--grave); }
+
+    /* ---------- buttons ---------- */
+    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px; }
+    .forge-hint { color: var(--bone-dim); font-size: var(--fs-small); }
+    .forge-hint.fail { color: #f0a0a4; }
+    .forge-hint:empty { display: none; }
+    .actions-end { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-left: auto; }
+    .btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 22px;
+      border-radius: 10px;
+      font: 600 var(--fs-body) var(--font-body);
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: filter 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn:focus-visible { outline: 2px solid var(--bone); outline-offset: 3px; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary {
+      color: #fff;
+      border: 1px solid #c81c25;
+      background: linear-gradient(180deg, #c41b24 0%, var(--blood) 55%, #6e0b11 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 22px -6px rgba(224, 38, 47, 0.55);
+    }
+    /* A single drop hanging off the button's lower edge. */
+    .btn-primary::after {
+      content: "";
+      position: absolute;
+      left: 28px;
+      bottom: -7px;
+      width: 7px;
+      height: 9px;
+      background: #6e0b11;
+      border-radius: 0 0 50% 50% / 0 0 70% 70%;
+    }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.12); }
+    .btn-ghost { color: var(--bone-mid); border: 1px solid var(--edge); background: rgba(0, 0, 0, 0.2); }
+    .btn-ghost:hover:not(:disabled) { color: var(--bone); border-color: var(--edge-hot); }
+    .btn-sm { padding: 9px 16px; font-size: var(--fs-small); border-radius: 8px; }
+    .btn-sm svg.icon { width: 16px; height: 16px; }
+    .btn-reap { padding: 16px 36px; }
+
+    /* ---------- status boxes ---------- */
+    .integrity-dialog {
+      max-width: 520px;
+      padding: 24px 26px;
+      border-radius: 14px;
+      border: 1px solid var(--blood-hot);
+      background: #140d12;
+      color: var(--bone);
+      font-size: var(--fs-body);
+      box-shadow: 0 0 40px var(--blood-glow);
+    }
+    .integrity-dialog::backdrop { background: rgba(0, 0, 0, 0.75); }
+    .integrity-dialog h2 { margin: 0 0 10px; font-family: var(--font-display); font-size: var(--fs-heading); color: #f0a0a4; }
+    .integrity-dialog p { margin: 10px 0 0; }
+    .reap-dialog {
+      max-width: 440px;
+      padding: 28px 30px 26px;
+      border-radius: 14px;
+      border: 1px solid var(--blood-hot);
+      background: radial-gradient(ellipse at 50% 0%, #2a0a0e, #0c0709 70%);
+      color: var(--bone);
+      font-size: var(--fs-body);
+      text-align: center;
+      box-shadow: 0 0 60px var(--blood-glow);
+    }
+    .reap-dialog::backdrop { background: rgba(10, 0, 2, 0.85); }
+    .reap-dialog-scythe { display: block; width: 230px; height: auto; margin: 0 auto 10px; overflow: visible; filter: drop-shadow(0 0 18px rgba(224, 38, 47, 0.35)); }
+    .reap-dialog h2 { margin: 0; font-family: var(--font-display); font-size: var(--fs-heading); color: #f0a0a4; }
+    .reap-dialog p { margin: 12px 0 0; color: var(--bone-mid); }
+    .reap-dialog-actions { display: flex; justify-content: center; gap: 12px; margin-top: 22px; }
+    .reap-drip { animation: drip-fall 2.4s ease-in infinite; }
+    @keyframes drip-fall { 0% { transform: translateY(0); opacity: 1; } 80% { opacity: 1; } 100% { transform: translateY(26px); opacity: 0; } }
+
+    /* ---------- reap slash ----------
+       Timeline (REAP_CUT_MS / REAP_FADE_MS / REAP_DONE_MS in the script):
+       0-0.35 s the scythe sweeps and draws the slash; 0.35 s the cut (the
+       wipe runs here); 0.9 s the slash and darkness fade; 1.2 s gone. */
+    .reap-slash { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
+    .reap-slash::before { content: ""; position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity 0.3s; }
+    .reap-slash.cut::before { opacity: 0.9; }
+    .reap-slash.fading::before { opacity: 0; }
+    .reap-slash-cut { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .reap-slash-line {
+      fill: none;
+      stroke: #e0262f;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      filter: drop-shadow(0 0 6px #ff3a44);
+      animation: slash-draw 0.35s cubic-bezier(0.6, 0, 0.4, 1) forwards;
+      transition: stroke-width 0.1s, opacity 0.3s;
+    }
+    @keyframes slash-draw { to { stroke-dashoffset: 0; } }
+    .reap-slash.cut .reap-slash-line { stroke: #ff5a62; stroke-width: 8; }
+    .reap-bead { fill: #b3141c; opacity: 0; animation: bead-drip 0.55s ease-in forwards; transition: opacity 0.3s; }
+    @keyframes bead-drip { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 1; transform: translateY(22px); } }
+    .reap-slash.fading .reap-slash-line, .reap-slash.fading .reap-bead { opacity: 0; }
+    .reap-slash-scythe {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 320px;
+      height: auto;
+      overflow: visible;
+      offset-rotate: auto 180deg;
+      offset-anchor: 6% 40%;
+      filter: drop-shadow(0 0 14px rgba(224, 38, 47, 0.6));
+      animation: scythe-sweep 0.35s cubic-bezier(0.6, 0, 0.4, 1) forwards;
+      transition: opacity 0.15s;
+    }
+    @keyframes scythe-sweep { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+    .reap-slash.cut .reap-slash-scythe { opacity: 0; }
+    .page.reap-jolt { animation: reap-jolt 0.25s ease-out; }
+    @keyframes reap-jolt {
+      0% { transform: translate(0, 0); }
+      20% { transform: translate(-9px, 7px); }
+      45% { transform: translate(7px, -5px); }
+      70% { transform: translate(-3px, 2px); }
+      100% { transform: translate(0, 0); }
+    }
+    .integrity-detail { color: var(--bone-dim); font: var(--fs-small) var(--font-mono); overflow-wrap: anywhere; }
+
+    /* ---------- recovery phrase ---------- */
+    .word-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .word {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #2a1f27;
+      background: linear-gradient(180deg, #120d13, #0b080c);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      font: 600 var(--fs-body) var(--font-mono);
+      color: var(--bone);
+    }
+    .word-pos { font-size: var(--fs-label); font-weight: 700; color: var(--blood-hot); }
+    .hex-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--edge);
+      background: var(--well);
+    }
+    #entropyText {
+      flex: 1;
+      min-width: 0;
+      font: 500 var(--fs-body) var(--font-mono);
+      letter-spacing: 0.03em;
+      color: var(--bone-mid);
+      word-break: break-all;
+    }
+    .result-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+    .copy-status { color: var(--bone-dim); font-size: var(--fs-small); }
+    .copy-status.fail { color: #f0a0a4; }
+
+    /* ---------- steel plate guide ---------- */
+    .steel-scroll {
+      margin-top: 12px;
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid var(--edge);
+      background: var(--well);
+    }
+    .steel-scroll:has(#steelPlateOutput:empty) { display: none; }
+    .steel-table { width: 100%; border-collapse: collapse; font: 500 var(--fs-small) var(--font-mono); color: var(--bone); }
+    .steel-table th {
+      position: sticky;
+      top: 0;
+      padding: 10px 3px;
+      border-bottom: 1px solid var(--edge);
+      background: #140e15;
+      font-size: var(--fs-label);
+      font-weight: 600;
+      text-align: center;
+      color: var(--bone-dim);
+    }
+    .steel-table td { padding: 8px 3px; text-align: center; border-bottom: 1px solid #1c151c; white-space: nowrap; }
+    .steel-table tr:nth-child(even) td { background: rgba(255, 255, 255, 0.015); }
+    .steel-table tbody tr:hover td { background: rgba(158, 16, 24, 0.12); }
+    .steel-table .steel-left { text-align: left; padding-left: 14px; }
+    .steel-table .steel-dot { min-width: 2.6em; }
+    /* Dividers split the 12 columns into 2048–512 | 256–32 | 16–1 so the eye can't slip a column while stamping. */
+    .steel-table .steel-group { border-left: 1px solid #2c2129; }
+    .steel-table td.steel-pos { font-size: var(--fs-label); font-weight: 700; color: var(--blood-hot); }
+    .steel-table td.steel-word { font-weight: 700; }
+    .steel-table td.steel-idx { font-weight: 700; letter-spacing: 0.04em; }
+    .steel-table td.steel-sum { padding: 8px 14px; text-align: left; font-size: var(--fs-label); color: var(--grave); }
+    .pip {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1.5px solid #4a3a45;
+      vertical-align: middle;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .pip.punch {
+      border-color: #ff5a62;
+      background: radial-gradient(circle at 35% 30%, #ff6a72, var(--blood-hot) 45%, var(--oxblood));
+      box-shadow: 0 0 8px var(--blood-glow);
+    }
+    .steel-legend-pip { width: 13px; height: 13px; }
+    .steel-foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 16px;
+    }
+    .steel-foot p { margin: 0; max-width: 640px; color: var(--bone-dim); font-size: var(--fs-small); }
+    .steel-foot p strong { color: var(--bone); }
+    .print-only { display: none; }
+
+    /* ---------- reap ---------- */
+    .reap { margin-top: 40px; text-align: center; }
+    .reap p { margin: 12px 0 0; color: var(--bone-dim); font-size: var(--fs-small); }
+    .reap-feedback {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(143, 191, 122, 0.28);
+      background: rgba(143, 191, 122, 0.07);
+      color: var(--grave);
+      font-size: var(--fs-small);
+    }
+
+    /* ---------- responsive ---------- */
+    @media (max-width: 760px) {
+      .page { padding: 12px 12px 60px; }
+      .card { padding: 22px 16px 24px; }
+      .setup-length { flex-basis: 100%; max-width: none; }
+      .setup { flex-basis: 100%; }
+      .seg { display: flex; }
+      .seg label { flex: 1 1 0; }
+      .seg span { padding: 10px 8px; font-size: var(--fs-small); }
+      .dice-pad { grid-template-columns: repeat(3, 1fr); }
+      #generateBtn { flex: 1 1 100%; justify-content: center; }
+      .actions-end { flex: 1 1 100%; flex-wrap: nowrap; margin-left: 0; }
+      .actions-end .btn { flex: 1 1 0; justify-content: center; padding-left: 10px; padding-right: 10px; font-size: var(--fs-small); white-space: nowrap; }
+      .word-grid { grid-template-columns: repeat(2, 1fr); }
+      .card-head h2 { font-size: var(--fs-lead); }
+    }
+    @media (min-width: 761px) and (max-width: 900px) {
+      .word-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .fog, .reaper-eye, .blood-drip .falling-drop, .reap-drip { animation: none; }
+      .vial-fill { transition: none; }
+    }
+
+    /* ---------- print: only the steel plate guide, black on white ---------- */
+    @media print {
+      html, body { background: #fff; }
+      /* display:none rather than visibility:hidden, so the rest of the app
+         takes no space and cannot spill blank pages after the guide. */
+      body::after,
+      .fog,
+      .reaper-header,
+      .reap,
+      main > section,
+      #resultsContainer > section:not(#steelPlateSection) { display: none; }
+      .page { max-width: none; padding: 0; }
+      #steelPlateSection {
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: #fff;
+        box-shadow: none;
+        color: #000;
+      }
+      #steelPlateSection::before,
+      #steelPlateSection .sigil,
+      #steelPlateSection .steel-screen-only { display: none; }
+      #steelPlateSection .print-only { display: block; font-weight: bold; }
+      #steelPlateSection .card-head h2,
+      #steelPlateSection .card-intro { color: #000; }
+      #steelPlateSection .steel-scroll { overflow: visible; border: none; background: #fff; }
+      #steelPlateSection .steel-table { color: #000; font-size: 9pt; }
+      #steelPlateSection .steel-table th { position: static; color: #000; background: #fff; border-bottom: 1px solid #000; }
+      #steelPlateSection .steel-table td { padding: 2px 3px; border-bottom: 1px solid #999; background: #fff; color: #000; }
+      #steelPlateSection .steel-table .steel-group { border-left: 1px solid #999; }
+      #steelPlateSection .pip { width: 10px; height: 10px; border: 1px solid #999; background: #fff; box-shadow: none; }
+      #steelPlateSection .pip.punch { border-color: #000; background: #000; }
+    }
+  </style>
+</head>
+<body>
+<div class="fog" aria-hidden="true"></div>
+<div class="page">
+
+<header class="reaper-header">
+  <svg class="reaper-mark" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="reaperCloak" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#2a1d27"/><stop offset=".6" stop-color="#140e15"/><stop offset="1" stop-color="#070508"/>
+      </linearGradient>
+      <linearGradient id="reaperBlade" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#e8e4e8"/><stop offset=".35" stop-color="#8d8790"/><stop offset="1" stop-color="#3a3438"/>
+      </linearGradient>
+      <radialGradient id="reaperEyeGlow" cx=".5" cy=".5" r=".5">
+        <stop offset="0" stop-color="#ff3a44" stop-opacity=".9"/><stop offset="1" stop-color="#ff3a44" stop-opacity="0"/>
+      </radialGradient>
+      <!-- Bloodied scythe, shared by the reap dialog and the reap sweep. -->
+      <symbol id="scythe" viewBox="0 0 260 140">
+        <path d="M226 14 L190 136" stroke="#4a3a2e" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M224 16 L188 134" stroke="#6b5442" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M230 16 C186 -6 90 -4 16 54 C84 26 164 24 222 42 Z" fill="url(#reaperBlade)" stroke="#000" stroke-width="1.2"/>
+        <path d="M16 54 C86 20 166 14 226 34" stroke="#e0262f" stroke-width="2.5" fill="none"/>
+        <path d="M22 52 C42 42 60 34 82 28" stroke="#9e1018" stroke-width="4" fill="none" stroke-linecap="round" opacity=".9"/>
+        <path d="M60 37 q2 7 0 11 q-2 -4 0 -11z" fill="#9e1018"/>
+        <path d="M18 54 q3 12 0 19 q-3 -7 0 -19z" fill="#9e1018"/>
+      </symbol>
+    </defs>
+    <path d="M186 28 Q176 110 160 200" stroke="#4a3a2e" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M190 30 C150 -4 70 0 14 58 C64 26 128 20 178 46 Z" fill="url(#reaperBlade)" stroke="#000" stroke-width="1.2"/>
+    <path d="M14 58 C66 22 132 16 184 40" stroke="#e0262f" stroke-width="2" fill="none" opacity=".9"/>
+    <path d="M22 54 q2 10 0 16 q-2 -6 0 -16z" fill="#9e1018"/>
+    <circle class="reap-drip" cx="22" cy="78" r="2.4" fill="#9e1018"/>
+    <path d="M100 30 C55 30 30 70 28 115 C26 150 20 175 10 200 L190 200 C180 175 174 150 172 115 C170 70 145 30 100 30 Z" fill="url(#reaperCloak)" stroke="#000" stroke-width="1.5"/>
+    <path d="M100 52 C70 52 56 78 56 108 C56 140 74 166 100 166 C126 166 144 140 144 108 C144 78 130 52 100 52 Z" fill="#020102"/>
+    <path d="M100 70 C81 70 69 85 69 104 C69 118 75 127 83 131 L84 146 C90 150 110 150 116 146 L117 131 C125 127 131 118 131 104 C131 85 119 70 100 70 Z" fill="#cbbfa9"/>
+    <ellipse cx="88" cy="104" rx="9" ry="10" fill="#0a0304"/>
+    <ellipse cx="112" cy="104" rx="9" ry="10" fill="#0a0304"/>
+    <circle class="reaper-eye" cx="88" cy="105" r="9" fill="url(#reaperEyeGlow)"/>
+    <circle class="reaper-eye" cx="112" cy="105" r="9" fill="url(#reaperEyeGlow)"/>
+    <circle class="reaper-eye" cx="88" cy="105" r="2.4" fill="#ffd2d4"/>
+    <circle class="reaper-eye" cx="112" cy="105" r="2.4" fill="#ffd2d4"/>
+    <path d="M100 114 l-4.5 10 h9 z" fill="#0a0304"/>
+    <path d="M85 134 H115 M90 134 v10 M95 134 v11 M100 134 v11 M105 134 v11 M110 134 v10" stroke="#2a1e1c" stroke-width="1.6" fill="none"/>
+  </svg>
+  <h1 class="reaper-title">The Reaper<span class="blood-mark">’</span>s Ledger</h1>
+  <p class="reaper-tagline">BIP39 seed generator for physical dice rolls</p>
+  <svg class="blood-drip" viewBox="0 0 960 46" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="bloodPour" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#b3141c"/><stop offset="1" stop-color="#5c0a0e"/>
+      </linearGradient>
+    </defs>
+    <path fill="url(#bloodPour)" d="M0 0 H960 V5
+      C940 5 936 7 934 12 C932 18 928 18 926 12 C924 7 910 6 880 6
+      C850 6 846 9 844 20 C842 34 834 34 832 20 C830 9 820 6 760 6
+      C720 6 716 8 714 11 C712 15 708 15 706 11 C704 8 680 6 640 6
+      C600 6 596 10 594 26 C592 40 582 40 580 26 C578 10 570 6 520 6
+      C470 6 466 8 464 13 C462 18 456 18 454 13 C452 8 420 6 380 6
+      C340 6 336 10 334 18 C332 28 324 28 322 18 C320 10 300 6 250 6
+      C200 6 196 9 194 22 C192 36 182 36 180 22 C178 9 150 6 110 6
+      C80 6 76 8 74 12 C72 17 66 17 64 12 C62 8 40 6 0 6 Z"/>
+    <path d="M0 1.5 H960" stroke="#ff5a62" stroke-opacity=".35" stroke-width="1"/>
+    <ellipse class="falling-drop" cx="587" cy="44" rx="3" ry="4" fill="#8c1018"/>
+  </svg>
+</header>
+
+<main>
+<!-- ============ I. CAST THE BONES ============ -->
+<section class="card" aria-labelledby="castTitle">
+  <div class="card-head">
+    <div class="sigil" aria-hidden="true">I</div>
+    <h2 id="castTitle">Cast the bones</h2>
+  </div>
+  <p class="card-intro">Roll one die at a time and tap the face that landed up, or press its number (1–6) on the keyboard. Keep rolling until the bar is full, then press "Forge Seed".</p>
+
+  <div class="setup-row">
+    <div class="setup setup-length">
+      <label class="field-label" for="wordCountSelect">Seed length</label>
+      <select id="wordCountSelect" class="select"></select>
+    </div>
+    <fieldset class="setup">
+      <legend class="field-label">Index type compatibility</legend>
+      <div class="seg">
+        <label><input type="radio" name="indexType" value="keystone" class="sr-only" checked><span>Keystone / Ian Coleman</span></label>
+        <label><input type="radio" name="indexType" value="coldcard" class="sr-only"><span>Coldcard / SeedSigner</span></label>
+      </div>
+    </fieldset>
+  </div>
+
+  <div class="dice-pad" id="dicePad" role="group" aria-label="Dice faces">
+    <button type="button" class="die" data-face="1" aria-label="Rolled 1"><i class="p5"></i></button>
+    <button type="button" class="die" data-face="2" aria-label="Rolled 2"><i class="p3"></i><i class="p7"></i></button>
+    <button type="button" class="die" data-face="3" aria-label="Rolled 3"><i class="p3"></i><i class="p5"></i><i class="p7"></i></button>
+    <button type="button" class="die" data-face="4" aria-label="Rolled 4"><i class="p1"></i><i class="p3"></i><i class="p7"></i><i class="p9"></i></button>
+    <button type="button" class="die" data-face="5" aria-label="Rolled 5"><i class="p1"></i><i class="p3"></i><i class="p5"></i><i class="p7"></i><i class="p9"></i></button>
+    <button type="button" class="die" data-face="6" aria-label="Rolled 6"><i class="p1"></i><i class="p3"></i><i class="p4"></i><i class="p6"></i><i class="p7"></i><i class="p9"></i></button>
+  </div>
+
+  <div class="rolls-box" id="rollsBox" aria-label="Rolls entered" aria-live="polite"></div>
+
+  <div class="vial-row">
+    <div class="vial" id="rollProgress" role="progressbar" aria-label="Dice rolls entered" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="vial-fill" id="rollProgressFill"></div>
+    </div>
+    <div class="roll-count">
+      <span id="rollCountValue">0</span><span class="roll-meta"> / <span id="rollCountRequired">100</span> · <span id="rollCountHint">0.0 bits</span></span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn btn-primary" id="generateBtn">
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2C7 2 3.5 5.6 3.5 10.2c0 2.6 1.2 4.6 3 5.9V19a1 1 0 0 0 1 1h1.5v-2h1.5v2h3v-2h1.5v2H16.5a1 1 0 0 0 1-1v-2.9c1.8-1.3 3-3.3 3-5.9C20.5 5.6 17 2 12 2Zm-3.5 11a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm7 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/></svg>
+      Forge Seed
+    </button>
+    <span class="forge-hint" id="forgeHint" role="status"></span>
+    <div class="actions-end">
+    <button type="button" class="btn btn-ghost" id="undoRollBtn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
+      Undo last roll
+    </button>
+    <button type="button" class="btn btn-ghost" id="clearDiceBtn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      Clear rolls
+    </button>
+    </div>
+  </div>
+</section>
+
+<div id="resultsContainer" hidden>
+<!-- ============ II. RECOVERY PHRASE ============ -->
+<section class="card" aria-labelledby="phraseTitle">
+  <div class="card-head">
+    <div class="sigil" aria-hidden="true">II</div>
+    <h2 id="phraseTitle">Your recovery phrase</h2>
+  </div>
+  <p class="card-intro">Write the words down in order.</p>
+
+  <ol class="word-grid" id="mnemonicGrid"></ol>
+
+  <span class="field-label">Entropy (hex)</span>
+  <div class="hex-box">
+    <div id="entropyText"></div>
+  </div>
+
+  <div class="result-actions">
+    <button type="button" class="btn btn-ghost btn-sm" id="copyMnemonicBtn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>
+      Copy phrase
+    </button>
+    <button type="button" class="btn btn-ghost btn-sm" id="copyEntropyBtn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>
+      Copy hex
+    </button>
+    <span class="copy-status" id="copyStatus" role="status"></span>
+  </div>
+</section>
+
+<!-- ============ III. STEEL PLATE ============ -->
+<section class="card" id="steelPlateSection" aria-labelledby="steelTitle">
+  <div class="card-head">
+    <div class="sigil" aria-hidden="true">III</div>
+    <h2 id="steelTitle">Steel plate stamping guide</h2>
+  </div>
+  <p class="card-intro">Punch every <span class="pip punch steel-legend-pip" aria-hidden="true"></span><span class="sr-only">filled dot</span> in a row. The punched columns add up to the word's number (1–2048, its position in the BIP39 wordlist). Check each row's sum before and after stamping.</p>
+
+  <div class="steel-scroll">
+    <div id="steelPlateOutput"></div>
+  </div>
+
+  <p class="print-only">SECRET: this sheet is a complete seed phrase in numeric form. Destroy it after stamping.</p>
+  <div class="steel-foot steel-screen-only">
+    <p><strong>This table is the seed in numeric form.</strong> A printout, and the printer's memory, will hold the seed. Destroy the paper after stamping.</p>
+    <button type="button" class="btn btn-ghost btn-sm" id="printSteelBtn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z"/></svg>
+      Print guide
+    </button>
+  </div>
+</section>
+</div>
+
+
+<div class="reap">
+  <button type="button" class="btn btn-primary btn-reap" id="reapBtn">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+    Reap everything
+  </button>
+  <p>Clears the rolls, phrase, hex and steel guide, and overwrites the clipboard.</p>
+  <div class="reap-feedback" id="reapFeedback" role="status" hidden>Cleared.</div>
+</div>
+</main>
+
+<dialog class="reap-dialog" id="reapDialog" aria-labelledby="reapDialogTitle">
+  <svg class="reap-dialog-scythe" viewBox="0 0 260 140" aria-hidden="true" focusable="false">
+    <use href="#scythe"/>
+    <circle class="reap-drip" cx="18" cy="80" r="3" fill="#9e1018"/>
+  </svg>
+  <h2 id="reapDialogTitle">Reap everything?</h2>
+  <p>This wipes the rolls, phrase, hex and steel guide, and overwrites the clipboard. It can't be undone. Make sure your words are written down.</p>
+  <div class="reap-dialog-actions">
+    <button type="button" class="btn btn-ghost" id="reapCancelBtn" autofocus>Cancel</button>
+    <button type="button" class="btn btn-primary" id="reapConfirmBtn">Reap</button>
+  </div>
+</dialog>
+
+<dialog class="integrity-dialog" id="integrityDialog" aria-labelledby="integrityTitle">
+  <h2 id="integrityTitle">Do not use this page</h2>
+  <p>This copy of the page failed its internal check. Seed generation is disabled.</p>
+  <p class="integrity-detail" id="integrityDetail"></p>
+</dialog>
+
+</div>
+
+<!-- Outside .page: the jolt transforms .page, which would otherwise
+     re-anchor this fixed layer to the page instead of the viewport. -->
+<div class="reap-slash" id="reapSlash" aria-hidden="true" hidden>
+  <svg class="reap-slash-cut" id="reapSlashCut" focusable="false"></svg>
+  <svg class="reap-slash-scythe" id="reapSlashScythe" viewBox="0 0 260 140" focusable="false"><use href="#scythe"/></svg>
+</div>
+
+<script>
+/*
+ *        ▄▄▄▄▄▄▄
+ *      ▄█▀     ▀█▄
+ *     ██   ◉ ◉   ██      T H E   R E A P E R ' S   L E D G E R
+ *     ██     ▼     ██
+ *      ▀█▄  ▄▄▄  ▄█▀
+ *        ▀▀▀▀▀▀▀
+ */
+// ☠ THE WORD HOARD — official BIP39 wordlist (2048 words, sorted alphabetically)
+const WORDLIST = [
+  "abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse",
+  "access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act",
+  "action","actor","actress","actual","adapt","add","addict","address","adjust","admit",
+  "adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent",
+  "agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert",
+  "alien","all","alley","allow","almost","alone","alpha","already","also","alter",
+  "always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger",
+  "angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique",
+  "anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic",
+  "area","arena","argue","arm","armed","armor","army","around","arrange","arrest",
+  "arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset",
+  "assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction",
+  "audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake",
+  "aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge",
+  "bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain",
+  "barrel","base","basic","basket","battle","beach","bean","beauty","because","become",
+  "beef","before","begin","behave","behind","believe","below","belt","bench","benefit",
+  "best","betray","better","between","beyond","bicycle","bid","bike","bind","biology",
+  "bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless",
+  "blind","blood","blossom","blouse","blue","blur","blush","board","boat","body",
+  "boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss",
+  "bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread",
+  "breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze",
+  "broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb",
+  "bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy",
+  "butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call",
+  "calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas",
+  "canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry",
+  "cart","case","cash","casino","castle","casual","cat","catalog","catch","category",
+  "cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century",
+  "cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase",
+  "chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child",
+  "chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle",
+  "citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk",
+  "clever","click","client","cliff","climb","clinic","clip","clock","clog","close",
+  "cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut",
+  "code","coffee","coil","coin","collect","color","column","combine","come","comfort",
+  "comic","common","company","concert","conduct","confirm","congress","connect","consider","control",
+  "convince","cook","cool","copper","copy","coral","core","corn","correct","cost",
+  "cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle",
+  "craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek",
+  "crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial",
+  "cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup",
+  "cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad",
+  "damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal",
+  "debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense",
+  "define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny",
+  "depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk",
+  "despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond",
+  "diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur",
+  "direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance",
+  "divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain",
+  "donate","donkey","donor","door","dose","double","dove","draft","dragon","drama",
+  "drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop",
+  "drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf",
+  "dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo",
+  "ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow",
+  "elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody",
+  "embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless",
+  "endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough",
+  "enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip",
+  "era","erase","erode","erosion","error","erupt","escape","essay","essence","estate",
+  "eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange",
+  "excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit",
+  "exotic","expand","expect","expire","explain","expose","express","extend","extra","eye",
+  "eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame",
+  "family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father",
+  "fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female",
+  "fence","festival","fetch","fever","few","fiber","fiction","field","figure","file",
+  "film","filter","final","find","fine","finger","finish","fire","firm","first",
+  "fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor",
+  "flee","flight","flip","float","flock","floor","flower","fluid","flush","fly",
+  "foam","focus","fog","foil","fold","follow","food","foot","force","forest",
+  "forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile",
+  "frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen",
+  "fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy",
+  "gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp",
+  "gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture",
+  "ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance",
+  "glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue",
+  "goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown",
+  "grab","grace","grain","grant","grape","grass","gravity","great","green","grid",
+  "grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt",
+  "guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy",
+  "harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health",
+  "heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden",
+  "high","hill","hint","hip","hire","history","hobby","hockey","hold","hole",
+  "holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital",
+  "host","hotel","hour","hover","hub","huge","human","humble","humor","hundred",
+  "hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea",
+  "identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune",
+  "impact","impose","improve","impulse","inch","include","income","increase","index","indicate",
+  "indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury",
+  "inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install",
+  "intact","interest","into","invest","invite","involve","iron","island","isolate","issue",
+  "item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel",
+  "job","join","joke","journey","joy","judge","juice","jump","jungle","junior",
+  "junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney",
+  "kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife",
+  "knock","know","lab","label","labor","ladder","lady","lake","lamp","language",
+  "laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit",
+  "layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal",
+  "legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level",
+  "liar","liberty","library","license","life","lift","light","like","limb","limit",
+  "link","lion","liquid","list","little","live","lizard","load","loan","lobster",
+  "local","lock","logic","lonely","long","loop","lottery","loud","lounge","love",
+  "loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad",
+  "magic","magnet","maid","mail","main","major","make","mammal","man","manage",
+  "mandate","mango","mansion","manual","maple","marble","march","margin","marine","market",
+  "marriage","mask","mass","master","match","material","math","matrix","matter","maximum",
+  "maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt",
+  "member","memory","mention","menu","mercy","merge","merit","merry","mesh","message",
+  "metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor",
+  "minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile",
+  "model","modify","mom","moment","monitor","monkey","monster","month","moon","moral",
+  "more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie",
+  "much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual",
+  "myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature",
+  "near","neck","need","negative","neglect","neither","nephew","nerve","nest","net",
+  "network","neutral","never","news","next","nice","night","noble","noise","nominee",
+  "noodle","normal","north","nose","notable","note","nothing","notice","novel","now",
+  "nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe",
+  "obtain","obvious","occur","ocean","october","odor","off","offer","office","often",
+  "oil","okay","old","olive","olympic","omit","once","one","onion","online",
+  "only","open","opera","opinion","oppose","option","orange","orbit","orchard","order",
+  "ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output",
+  "outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact",
+  "paddle","page","pair","palace","palm","panda","panel","panic","panther","paper",
+  "parade","parent","park","parrot","party","pass","patch","path","patient","patrol",
+  "pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen",
+  "penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo",
+  "phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot",
+  "pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate",
+  "play","please","pledge","pluck","plug","plunge","poem","poet","point","polar",
+  "pole","police","pond","pony","pool","popular","portion","position","possible","post",
+  "potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare",
+  "present","pretty","prevent","price","pride","primary","print","priority","prison","private",
+  "prize","problem","process","produce","profit","program","project","promote","proof","property",
+  "prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin",
+  "punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle",
+  "pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit",
+  "raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp",
+  "ranch","random","range","rapid","rare","rate","rather","raven","raw","razor",
+  "ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle",
+  "reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release",
+  "relief","rely","remain","remember","remind","remove","render","renew","rent","reopen",
+  "repair","repeat","replace","report","require","rescue","resemble","resist","resource","response",
+  "result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib",
+  "ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot",
+  "ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket",
+  "romance","roof","rookie","room","rose","rotate","rough","round","route","royal",
+  "rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness",
+  "safe","sail","salad","salmon","salon","salt","salute","same","sample","sand",
+  "satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter",
+  "scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script",
+  "scrub","sea","search","season","seat","second","secret","section","security","seed",
+  "seek","segment","select","sell","seminar","senior","sense","sentence","series","service",
+  "session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell",
+  "sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop",
+  "short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side",
+  "siege","sight","sign","silent","silk","silly","silver","similar","simple","since",
+  "sing","siren","sister","situate","six","size","skate","sketch","ski","skill",
+  "skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight",
+  "slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth",
+  "snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda",
+  "soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry",
+  "sort","soul","sound","soup","source","south","space","spare","spatial","spawn",
+  "speak","special","speed","spell","spend","sphere","spice","spider","spike","spin",
+  "spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring",
+  "spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp",
+  "stand","start","state","stay","steak","steel","stem","step","stereo","stick",
+  "still","sting","stock","stomach","stone","stool","story","stove","strategy","street",
+  "strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway",
+  "success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny",
+  "sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey",
+  "suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim",
+  "swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag",
+  "tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi",
+  "teach","team","tell","ten","tenant","tennis","tent","term","test","text",
+  "thank","that","theme","then","theory","there","they","thing","this","thought",
+  "three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber",
+  "time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler",
+  "toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool",
+  "tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist",
+  "toward","tower","town","toy","track","trade","traffic","tragic","train","transfer",
+  "trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick",
+  "trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust",
+  "truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle",
+  "twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella",
+  "unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform",
+  "unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade",
+  "uphold","upon","upper","upset","urban","urge","usage","use","used","useful",
+  "useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van",
+  "vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue",
+  "verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory",
+  "video","view","village","vintage","violin","virtual","virus","visa","visit","visual",
+  "vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage",
+  "wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash",
+  "wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather",
+  "web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat",
+  "wheel","when","where","whip","whisper","wide","width","wife","wild","will",
+  "win","window","wine","wing","wink","winner","winter","wire","wisdom","wise",
+  "wish","witness","wolf","woman","wonder","wood","wool","word","work","world",
+  "worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year",
+  "yellow","you","young","youth","zebra","zero","zone","zoo"
+];
+
+// ☠ STEEL RITE — index -> punch-dot decomposition
+// A steel plate row is the word's index written as a sum of powers
+// of two; each summand is one punched dot. STEEL_VALUES mirrors the
+// column layout of 12-column plates (2048 ... 1).
+const STEEL_VALUES = [2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1];
+
+function steelIndexToDots(n) {
+  return STEEL_VALUES.filter(function(v) { return (n & v) !== 0; });
+}
+
+// ---- Byte / hex helpers ----
+function bytesToHex(bytes) {
+  return Array.from(bytes, function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+function hexToBytes(hex) {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+// ---- SHA-256 ----
+/**
+ * SHA-256 from the browser's Web Crypto API. There is deliberately no
+ * JavaScript fallback: where crypto.subtle is missing the internal check
+ * fails and the page locks, instead of hashing with home-made code.
+ * @param {Uint8Array} bytes
+ * @returns {Promise<Uint8Array>} 32-byte digest
+ */
+async function sha256(bytes) {
+  if (!(globalThis.crypto && crypto.subtle)) {
+    throw new Error('this browser does not provide Web Crypto (crypto.subtle)');
+  }
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+}
+
+// ---- BIP-39 ----
+// Written from the BIP-39 specification: ENT bits of entropy (128-256, a
+// multiple of 32) get a checksum of CS = ENT / 32 bits, the first bits of
+// SHA-256(entropy). ENT + CS bits are read as 11-bit numbers, most
+// significant first, each an index into the 2048-word list.
+
+/**
+ * @param {string} entropyHex 32-64 hex characters
+ * @returns {Promise<string[]>} the mnemonic words
+ */
+async function entropyToMnemonic(entropyHex) {
+  const entropy = hexToBytes(entropyHex);
+  const entropyBits = entropy.length * 8;
+  if (entropyBits < 128 || entropyBits > 256 || entropyBits % 32 !== 0) {
+    throw new Error('entropy must be 128-256 bits in steps of 32, got ' + entropyBits);
+  }
+  const checksumBits = entropyBits / 32;
+  const digest = await sha256(entropy);
+  let value = (BigInt('0x' + entropyHex) << BigInt(checksumBits)) | BigInt(digest[0] >> (8 - checksumBits));
+
+  const words = new Array((entropyBits + checksumBits) / 11);
+  for (let i = words.length - 1; i >= 0; i--) {
+    words[i] = WORDLIST[Number(value & 2047n)];
+    value >>= 11n;
+  }
+  return words;
+}
+
+// ---- Dice rolls -> entropy ----
+function assertRolls(rolls) {
+  if (!/^[1-6]+$/.test(rolls)) throw new Error('rolls must be digits 1-6');
+}
+
+/**
+ * Keystone / Ian Coleman mode. Every 6 in the roll string is written as 0,
+ * the ASCII string is hashed with SHA-256, and the first entropyBytes of the
+ * digest are the entropy. Matches the Keystone firmware
+ * (gui_dice_rolls_widgets.c ConfirmHandler, gui_model.c
+ * ModelGenerateEntropyWithDiceRolls) and Ian Coleman's BIP39 tool with Dice
+ * entropy and a fixed word count (index.js setMnemonicFromEntropy). Every
+ * roll is hashed, so the roll count is part of the seed.
+ * @param {string} rolls digits 1-6
+ * @param {number} entropyBytes 16 or 32
+ * @returns {Promise<string>} entropy hex
+ */
+async function keystoneRollsToEntropy(rolls, entropyBytes) {
+  assertRolls(rolls);
+  const digest = await sha256(new TextEncoder().encode(rolls.replace(/6/g, '0')));
+  return bytesToHex(digest.slice(0, entropyBytes));
+}
+
+/**
+ * Coldcard / SeedSigner mode. The roll string is hashed with SHA-256 exactly
+ * as typed (6 stays 6), and the first entropyBytes of the digest are the
+ * entropy. Matches Coldcard's dice-only seed (shared/seed.py, docs/rolls.py)
+ * and SeedSigner (helpers/mnemonic_generation.py generate_mnemonic_from_dice).
+ * @param {string} rolls digits 1-6
+ * @param {number} entropyBytes 16 or 32
+ * @returns {Promise<string>} entropy hex
+ */
+async function coldcardRollsToEntropy(rolls, entropyBytes) {
+  assertRolls(rolls);
+  const digest = await sha256(new TextEncoder().encode(rolls));
+  return bytesToHex(digest.slice(0, entropyBytes));
+}
+
+// ---- Internal check ----
+// Runs once on load. Passing shows nothing; a failure locks the page.
+const WORDLIST_SHA256 = '187db04a869dd9bc7be80d21a86497d692c0db6abd3aa8cb6be5d618ff757fae';
+const SHA256_VECTORS = [
+  { input: '', hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
+  { input: 'abc', hash: 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad' }
+];
+// Official BIP-39 English test vectors (trezor/python-mnemonic vectors.json).
+const BIP39_VECTORS = [
+  { hex: '00000000000000000000000000000000',
+    mnemonic: 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about' },
+  { hex: '80808080808080808080808080808080',
+    mnemonic: 'letter advice cage absurd amount doctor acoustic avoid letter advice cage above' },
+  { hex: 'ffffffffffffffffffffffffffffffff',
+    mnemonic: 'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong' },
+  { hex: '0000000000000000000000000000000000000000000000000000000000000000',
+    mnemonic: 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art' }
+];
+const STEEL_PROBES = [1, 2, 3, 683, 1024, 1537, 2047, 2048];
+
+const INTERNAL_CHECK = (async function runInternalCheck() {
+  const failures = [];
+  async function expect(label, test) {
+    try {
+      if (!(await test())) failures.push(label);
+    } catch (e) {
+      failures.push(label + ' (' + e.message + ')');
+    }
+  }
+
+  await expect('wordlist: 2048 words in strict alphabetical order', function() {
+    return WORDLIST.length === 2048 && WORDLIST.every(function(word, i) { return i === 0 || WORDLIST[i - 1] < word; });
+  });
+  await expect('wordlist: hash', async function() {
+    return bytesToHex(await sha256(new TextEncoder().encode(WORDLIST.join('\n')))) === WORDLIST_SHA256;
+  });
+  for (const v of SHA256_VECTORS) {
+    await expect('SHA-256 of "' + v.input + '"', async function() {
+      return bytesToHex(await sha256(new TextEncoder().encode(v.input))) === v.hash;
+    });
+  }
+  for (const v of BIP39_VECTORS) {
+    await expect('BIP-39 vector ' + v.hex.slice(0, 8), async function() {
+      return (await entropyToMnemonic(v.hex)).join(' ') === v.mnemonic;
+    });
+  }
+  await expect('steel dots sum to the index', function() {
+    return STEEL_PROBES.every(function(n) {
+      return steelIndexToDots(n).reduce(function(a, b) { return a + b; }, 0) === n;
+    });
+  });
+
+  return { pass: failures.length === 0, message: failures.join('; ') };
+})();
+
+// ☠ THE LEDGER'S INTERFACE — UI logic
+document.addEventListener('DOMContentLoaded', function() {
+  // Per index type: entropy method, and for each word count the bytes of
+  // entropy and the rolls needed to forge. Minimums come from the wallets:
+  // Keystone 50 / 100 (gui_dice_rolls_widgets.c), Coldcard and SeedSigner
+  // 50 / 99 (shared/seed.py, helpers/mnemonic_generation.py). More rolls
+  // are accepted, up to MAX_ROLLS, Keystone's limit.
+  const INDEX_TYPES = {
+    keystone: {
+      toEntropy: keystoneRollsToEntropy,
+      lengths: {
+        12: { bytes: 16, minRolls: 50 },
+        24: { bytes: 32, minRolls: 100 }
+      }
+    },
+    coldcard: {
+      toEntropy: coldcardRollsToEntropy,
+      lengths: {
+        12: { bytes: 16, minRolls: 50 },
+        24: { bytes: 32, minRolls: 99 }
+      }
+    }
+  };
+  const MAX_ROLLS = 256;
+  const DEFAULT_WORD_COUNT = 24;
+  // Groups of five match how most people tally rolls on paper, so the
+  // display can be checked against the written record at a glance.
+  const ROLL_GROUP_SIZE = 5;
+  const BITS_PER_ROLL = Math.log2(6);
+  const DIE_FLASH_MS = 150;
+  const CLIPBOARD_OVERWRITE_MS = 12000;
+  // No 0-9/a-f, so the junk can't be mistaken for entropy hex.
+  const CLIPBOARD_JUNK_ALPHABET = 'ghjkmnpqrstuvwxyz';
+  const CLIPBOARD_JUNK_LENGTH = 32;
+  const REAP_FEEDBACK_MS = 3000;
+  // Reap slash timeline; must match the .reap-slash CSS durations.
+  const REAP_CUT_MS = 350;
+  const REAP_FADE_MS = 900;
+  const REAP_DONE_MS = 1200;
+  const REAP_BEADS = 9;
+  // Column-group boundaries in the steel table; must match the
+  // 2048–512 | 256–32 | 16–1 grouping drawn by .steel-group.
+  const STEEL_GROUP_STARTS = [256, 16];
+
+  const wordCountSelect = document.getElementById('wordCountSelect');
+  const indexTypeInputs = document.querySelectorAll('input[name="indexType"]');
+  const dicePad = document.getElementById('dicePad');
+  const dieButtons = dicePad.querySelectorAll('.die');
+  const rollsBox = document.getElementById('rollsBox');
+  const rollProgress = document.getElementById('rollProgress');
+  const rollProgressFill = document.getElementById('rollProgressFill');
+  const rollCountValue = document.getElementById('rollCountValue');
+  const rollCountRequired = document.getElementById('rollCountRequired');
+  const rollCountHint = document.getElementById('rollCountHint');
+  const generateBtn = document.getElementById('generateBtn');
+  const forgeHint = document.getElementById('forgeHint');
+  const undoRollBtn = document.getElementById('undoRollBtn');
+  const clearDiceBtn = document.getElementById('clearDiceBtn');
+  const resultsContainer = document.getElementById('resultsContainer');
+  const mnemonicGrid = document.getElementById('mnemonicGrid');
+  const entropyText = document.getElementById('entropyText');
+  const copyMnemonicBtn = document.getElementById('copyMnemonicBtn');
+  const copyEntropyBtn = document.getElementById('copyEntropyBtn');
+  const copyStatus = document.getElementById('copyStatus');
+  const steelPlateOutput = document.getElementById('steelPlateOutput');
+  const printSteelBtn = document.getElementById('printSteelBtn');
+  const reapBtn = document.getElementById('reapBtn');
+  const reapFeedback = document.getElementById('reapFeedback');
+  const reapDialog = document.getElementById('reapDialog');
+  const reapCancelBtn = document.getElementById('reapCancelBtn');
+  const reapConfirmBtn = document.getElementById('reapConfirmBtn');
+  const reapSlash = document.getElementById('reapSlash');
+  const reapSlashCut = document.getElementById('reapSlashCut');
+  const reapSlashScythe = document.getElementById('reapSlashScythe');
+  const pageShell = document.querySelector('.page');
+  const integrityDialog = document.getElementById('integrityDialog');
+  const integrityDetail = document.getElementById('integrityDetail');
+
+  // Closure-scoped secrets: never exposed on window.
+  let currentMnemonic = [];
+  let currentEntropy = '';
+  let rolls = '';
+  // Set when the internal check fails; every input control stays disabled.
+  let lockedOut = false;
+  const dieFlashTimers = new Map();
+
+  let clipboardOverwriteTimer = null;
+  // Set when a scheduled overwrite failed (browsers refuse clipboard writes
+  // while the page is unfocused); retried on the next window focus.
+  let clipboardOverwritePending = false;
+  let clipboardStatusTarget = null;
+
+  let reapFeedbackTimer = null;
+
+  // ---- Seed length + index type ----
+  function selectedIndexType() {
+    return document.querySelector('input[name="indexType"]:checked').value;
+  }
+
+  function selectedLength() {
+    return INDEX_TYPES[selectedIndexType()].lengths[Number(wordCountSelect.value)];
+  }
+
+  // Options are rebuilt from INDEX_TYPES so the labels can never drift
+  // from the limits the generator enforces.
+  function renderWordCountOptions() {
+    const lengths = INDEX_TYPES[selectedIndexType()].lengths;
+    const previous = Number(wordCountSelect.value);
+    const keep = lengths[previous] ? previous : DEFAULT_WORD_COUNT;
+    const options = Object.keys(lengths).map(function(key) {
+      const option = document.createElement('option');
+      option.value = key;
+      option.textContent = key + ' words · ' + (lengths[key].bytes * 8) + '-bit · ' + lengths[key].minRolls + ' rolls';
+      option.selected = Number(key) === keep;
+      return option;
+    });
+    wordCountSelect.replaceChildren(...options);
+  }
+
+  // Both controls only change how the same rolls are interpreted, so a
+  // seed already on screen is re-derived under the new setting.
+  async function onSetupChange() {
+    updateRollProgress();
+    if (resultsContainer.hidden) return;
+    if (rolls.length >= selectedLength().minRolls) {
+      await forgeSeed();
+    } else {
+      clearResults();
+    }
+  }
+
+  indexTypeInputs.forEach(function(input) {
+    input.addEventListener('change', function() {
+      renderWordCountOptions();
+      onSetupChange();
+    });
+  });
+  wordCountSelect.addEventListener('change', onSetupChange);
+
+  // ---- Roll entry ----
+  function renderRollsBox() {
+    const parts = [];
+    for (let i = 0; i < rolls.length; i += ROLL_GROUP_SIZE) {
+      const group = document.createElement('span');
+      group.className = 'roll-group';
+      const number = document.createElement('span');
+      number.className = 'roll-group-no';
+      number.textContent = String(i / ROLL_GROUP_SIZE + 1);
+      const separator = document.createElement('span');
+      separator.className = 'roll-group-sep';
+      separator.textContent = ':';
+      group.append(number, separator, rolls.slice(i, i + ROLL_GROUP_SIZE));
+      if (i > 0) parts.push(document.createTextNode(' '));
+      parts.push(group);
+    }
+    rollsBox.replaceChildren(...parts);
+  }
+
+  function updateRollProgress() {
+    const length = selectedLength();
+    const count = rolls.length;
+    const remaining = Math.max(0, length.minRolls - count);
+
+    rollProgressFill.style.width = (Math.min(1, count / length.minRolls) * 100) + '%';
+    rollProgress.setAttribute('aria-valuemax', String(length.minRolls));
+    rollProgress.setAttribute('aria-valuenow', String(count));
+    rollProgress.classList.toggle('full', remaining === 0);
+
+    rollCountValue.textContent = String(count);
+    rollCountRequired.textContent = String(length.minRolls);
+    // Each fair d6 roll carries log2(6) bits; neither method can output
+    // more entropy than the seed holds, so the figure is capped there.
+    const seedBits = length.bytes * 8;
+    const rawBits = count * BITS_PER_ROLL;
+    rollCountHint.textContent = rawBits >= seedBits ? seedBits + ' bits' : rawBits.toFixed(1) + ' bits';
+
+    const full = count >= MAX_ROLLS;
+    dieButtons.forEach(function(button) { button.disabled = full || lockedOut; });
+    undoRollBtn.disabled = rolls.length === 0 || lockedOut;
+    generateBtn.disabled = remaining > 0 || lockedOut;
+    forgeHint.classList.remove('fail');
+    forgeHint.textContent = remaining > 0 ? 'Not ready: ' + remaining + ' more ' + (remaining === 1 ? 'roll' : 'rolls') + ' needed.' : '';
+
+    renderRollsBox();
+  }
+
+  function flashDie(button) {
+    button.classList.remove('rolled');
+    // Reading offsetWidth forces a reflow so the animation restarts on repeat rolls of the same face.
+    void button.offsetWidth;
+    button.classList.add('rolled');
+    clearTimeout(dieFlashTimers.get(button));
+    dieFlashTimers.set(button, setTimeout(function() {
+      button.classList.remove('rolled');
+    }, DIE_FLASH_MS));
+  }
+
+  function addRoll(face) {
+    if (lockedOut || rolls.length >= MAX_ROLLS) return;
+    rolls += face;
+    flashDie(dicePad.querySelector('.die[data-face="' + face + '"]'));
+    updateRollProgress();
+  }
+
+  dieButtons.forEach(function(button) {
+    button.addEventListener('click', function() {
+      addRoll(button.dataset.face);
+    });
+  });
+
+  function undoRoll() {
+    if (lockedOut || rolls.length === 0) return;
+    rolls = rolls.slice(0, -1);
+    updateRollProgress();
+  }
+
+  // Number row and numeric keypad both roll; Backspace removes the last
+  // roll. e.code is used so the keypad works with Num Lock off. Key repeat
+  // is ignored so a held key can't add or erase a run of rolls, and typing
+  // in a form field is left alone.
+  document.addEventListener('keydown', function(e) {
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    if (e.target.closest('input, select, textarea')) return;
+    if (e.code === 'Backspace') {
+      e.preventDefault();
+      undoRoll();
+      return;
+    }
+    const match = /^(?:Digit|Numpad)([1-6])$/.exec(e.code);
+    if (!match) return;
+    e.preventDefault();
+    addRoll(match[1]);
+  });
+
+  undoRollBtn.addEventListener('click', undoRoll);
+
+  // ---- Results rendering ----
+  function renderMnemonic(words) {
+    const items = words.map(function(word, i) {
+      const item = document.createElement('li');
+      item.className = 'word';
+      const position = document.createElement('span');
+      position.className = 'word-pos';
+      position.textContent = String(i + 1).padStart(2, '0');
+      const text = document.createElement('span');
+      text.textContent = word;
+      item.append(position, text);
+      return item;
+    });
+    mnemonicGrid.replaceChildren(...items);
+  }
+
+  // STEEL PLATE GUIDE: one row per word — position, word, 1–2048 number, the 12
+  // plate columns with a filled pip on each column to punch, and a
+  // sum-check so the operator can verify the row before (and after) stamping.
+  function steelGroupClass(value) {
+    return STEEL_GROUP_STARTS.indexOf(value) !== -1 ? ' steel-group' : '';
+  }
+
+  function renderSteelGuide() {
+    if (currentMnemonic.length === 0) {
+      steelPlateOutput.replaceChildren();
+      return;
+    }
+
+    let html = '<table class="steel-table"><thead><tr>' +
+      '<th>#</th><th class="steel-left">word</th><th>no.</th>' +
+      STEEL_VALUES.map(function(v) { return '<th class="steel-dot' + steelGroupClass(v) + '">' + v + '</th>'; }).join('') +
+      '<th class="steel-left">sum check (= no.)</th></tr></thead><tbody>';
+    currentMnemonic.forEach(function(word, i) {
+      const idx0 = WORDLIST.indexOf(word);
+      if (idx0 === -1) return; // unreachable after INTERNAL_CHECK; never render a wrong row
+      // 1-based: the word's position in the numbered wordlist, which is
+      // what 12-column steel plates (…1024, 2048) are printed for.
+      const n = idx0 + 1;
+      const dots = steelIndexToDots(n);
+      html += '<tr>' +
+        '<td class="steel-pos">' + String(i + 1).padStart(2, '0') + '</td>' +
+        '<td class="steel-left steel-word">' + word + '</td>' +
+        '<td class="steel-idx">' + String(n).padStart(4, '0') + '</td>' +
+        STEEL_VALUES.map(function(v) {
+          const punch = (n & v) !== 0;
+          return '<td class="steel-dot' + steelGroupClass(v) + '"><span class="pip' + (punch ? ' punch' : '') +
+            '" role="img" aria-label="' + v + (punch ? ' punch' : ' skip') + '"></span></td>';
+        }).join('') +
+        // The row's number is already in the no. column; listing only the
+        // punched values keeps every row on one line.
+        '<td class="steel-sum">' + dots.join('+') + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table>';
+    steelPlateOutput.innerHTML = html;
+  }
+
+  printSteelBtn.addEventListener('click', function() { window.print(); });
+
+  async function forgeSeed() {
+    if (!(await INTERNAL_CHECK).pass) return;
+    const indexType = INDEX_TYPES[selectedIndexType()];
+    const length = indexType.lengths[Number(wordCountSelect.value)];
+    // The button is disabled below the minimum; this guards the re-derive path.
+    if (rolls.length < length.minRolls) return;
+
+    try {
+      const entropy = await indexType.toEntropy(rolls, length.bytes);
+      const mnemonic = await entropyToMnemonic(entropy);
+      currentEntropy = entropy;
+      currentMnemonic = mnemonic;
+      renderMnemonic(mnemonic);
+      renderSteelGuide();
+      entropyText.textContent = entropy;
+      resultsContainer.hidden = false;
+    } catch (err) {
+      clearResults();
+      forgeHint.classList.add('fail');
+      forgeHint.textContent = 'Seed not forged: ' + err.message;
+    }
+  }
+
+  generateBtn.addEventListener('click', async function() {
+    await forgeSeed();
+    if (resultsContainer.hidden) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    resultsContainer.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  });
+
+  // ---- Wiping ----
+  function clearDiceInput() {
+    rolls = '';
+    updateRollProgress();
+  }
+
+  function clearResults() {
+    mnemonicGrid.replaceChildren();
+    entropyText.textContent = '';
+    steelPlateOutput.replaceChildren();
+    resultsContainer.hidden = true;
+    currentMnemonic = [];
+    currentEntropy = '';
+  }
+
+  // Synchronous so it can also run from beforeunload, where awaiting the
+  // clipboard is not possible.
+  function wipeAllSecrets() {
+    clearDiceInput();
+    clearResults();
+    copyStatus.textContent = '';
+    copyStatus.classList.remove('fail');
+  }
+
+  async function reapEverything() {
+    wipeAllSecrets();
+    const overwritten = await overwriteClipboardNow();
+    reapFeedback.textContent = overwritten ? 'Cleared.' : 'Cleared. Clipboard overwrite failed.';
+    reapFeedback.hidden = false;
+    if (reapFeedbackTimer) clearTimeout(reapFeedbackTimer);
+    reapFeedbackTimer = setTimeout(function() {
+      reapFeedback.hidden = true;
+      reapFeedbackTimer = null;
+    }, REAP_FEEDBACK_MS);
+  }
+
+  clearDiceBtn.addEventListener('click', clearDiceInput);
+  // Reaping can't be undone, so it always goes through a confirmation.
+  // Cancel has focus by default, and Esc closes the dialog without reaping.
+  reapBtn.addEventListener('click', function() {
+    reapDialog.showModal();
+  });
+  reapCancelBtn.addEventListener('click', function() {
+    reapDialog.close();
+  });
+  reapConfirmBtn.addEventListener('click', function() {
+    reapDialog.close();
+    playReapSlash();
+  });
+
+  // A scythe sweeps across the screen drawing a slash; at the cut the page
+  // jolts, blood beads drip from the slash, the screen goes dark and the
+  // wipe runs. Nothing is copied for the effect: the page itself is only
+  // shaken and covered, so no secret is ever drawn twice.
+  let reaping = false;
+  function playReapSlash() {
+    if (reaping) return;
+    reaping = true;
+
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const d = 'M ' + (w + 80) + ' ' + (h * 0.1) + ' Q ' + (w * 0.45) + ' ' + (h * 0.3) + ' -80 ' + (h * 0.9);
+
+    const line = document.createElementNS(svgNs, 'path');
+    line.setAttribute('class', 'reap-slash-line');
+    line.setAttribute('d', d);
+    line.setAttribute('pathLength', '1');
+    reapSlashCut.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    reapSlashCut.replaceChildren(line);
+    reapSlashScythe.style.offsetPath = "path('" + d + "')";
+    reapSlash.className = 'reap-slash';
+    reapSlash.hidden = false;
+
+    setTimeout(function() {
+      const length = line.getTotalLength();
+      for (let i = 1; i <= REAP_BEADS; i++) {
+        const point = line.getPointAtLength(length * i / (REAP_BEADS + 1));
+        const bead = document.createElementNS(svgNs, 'circle');
+        bead.setAttribute('class', 'reap-bead');
+        bead.setAttribute('cx', String(point.x));
+        bead.setAttribute('cy', String(point.y));
+        bead.setAttribute('r', String(3 + (i % 3)));
+        bead.style.animationDelay = ((i * 37) % 160) + 'ms';
+        reapSlashCut.append(bead);
+      }
+      reapSlash.classList.add('cut');
+      pageShell.classList.add('reap-jolt');
+      reapEverything();
+    }, REAP_CUT_MS);
+
+    setTimeout(function() {
+      reapSlash.classList.add('fading');
+      pageShell.classList.remove('reap-jolt');
+    }, REAP_FADE_MS);
+
+    setTimeout(function() {
+      reapSlash.hidden = true;
+      reapSlash.className = 'reap-slash';
+      reapSlashCut.replaceChildren();
+      reaping = false;
+    }, REAP_DONE_MS);
+  }
+
+  window.addEventListener('beforeunload', function() {
+    wipeAllSecrets();
+    // The write can't be awaited here; it is started in case the browser
+    // lets it finish before the page is torn down.
+    if (clipboardOverwriteTimer || clipboardOverwritePending) {
+      writeClipboard(clipboardJunk());
+    }
+  });
+
+  // ---- Clipboard ----
+  // Anything copied from or pasted into this page is overwritten with junk
+  // CLIPBOARD_OVERWRITE_MS later, and immediately on Reap everything. The
+  // overwrite is unconditional: checking whether the clipboard still holds
+  // the secret needs a read permission most browsers deny to file:// pages.
+  // OS clipboard history and clipboard sync keep their own copies, which
+  // no web page can reach.
+  function clipboardJunk() {
+    const picks = new Uint32Array(CLIPBOARD_JUNK_LENGTH);
+    crypto.getRandomValues(picks);
+    return Array.from(picks, function(n) {
+      return CLIPBOARD_JUNK_ALPHABET[n % CLIPBOARD_JUNK_ALPHABET.length];
+    }).join('');
+  }
+
+  function setClipboardStatus(target, message, failed) {
+    if (!target) return;
+    target.textContent = message;
+    target.classList.toggle('fail', failed);
+  }
+
+  function cancelScheduledOverwrite() {
+    if (clipboardOverwriteTimer) {
+      clearTimeout(clipboardOverwriteTimer);
+      clipboardOverwriteTimer = null;
+    }
+  }
+
+  async function runClipboardOverwrite() {
+    const ok = await writeClipboard(clipboardJunk());
+    clipboardOverwritePending = !ok;
+    if (ok) {
+      setClipboardStatus(clipboardStatusTarget, 'Clipboard overwritten.', false);
+    } else {
+      setClipboardStatus(clipboardStatusTarget, 'Clipboard not overwritten: the browser blocks this while the page is in the background. It will be overwritten when you return to the page.', true);
+    }
+    return ok;
+  }
+
+  function scheduleClipboardOverwrite(target, prefix) {
+    cancelScheduledOverwrite();
+    clipboardStatusTarget = target;
+    setClipboardStatus(target, prefix + ' Clipboard will be overwritten in ' + (CLIPBOARD_OVERWRITE_MS / 1000) + ' s.', false);
+    clipboardOverwriteTimer = setTimeout(function() {
+      clipboardOverwriteTimer = null;
+      runClipboardOverwrite();
+    }, CLIPBOARD_OVERWRITE_MS);
+  }
+
+  async function overwriteClipboardNow() {
+    cancelScheduledOverwrite();
+    clipboardStatusTarget = null;
+    const ok = await writeClipboard(clipboardJunk());
+    clipboardOverwritePending = !ok;
+    return ok;
+  }
+
+  window.addEventListener('focus', function() {
+    if (clipboardOverwritePending && !clipboardOverwriteTimer) {
+      runClipboardOverwrite();
+    }
+  });
+
+  /**
+   * Writes text to the system clipboard.
+   * @param {string} text
+   * @returns {Promise<boolean>} false when the browser refuses the write
+   *   (no Clipboard API, or the page is in the background); callers report it.
+   */
+  async function writeClipboard(text) {
+    if (!navigator.clipboard) return false;
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  async function copySecret(label, text) {
+    if (await writeClipboard(text)) {
+      scheduleClipboardOverwrite(copyStatus, label + ' copied.');
+    } else {
+      setClipboardStatus(copyStatus, label + ' not copied: the browser refused clipboard access.', true);
+    }
+  }
+
+  copyMnemonicBtn.addEventListener('click', function() { copySecret('Phrase', currentMnemonic.join(' ')); });
+  copyEntropyBtn.addEventListener('click', function() { copySecret('Hex', currentEntropy); });
+
+  // ---- Internal check failure ----
+  function lockOut(message) {
+    lockedOut = true;
+    wipeAllSecrets();
+    document.querySelectorAll('main button, main input, main select').forEach(function(control) {
+      if (control !== reapBtn) control.disabled = true;
+    });
+    integrityDetail.textContent = message;
+    integrityDialog.showModal();
+  }
+
+  renderWordCountOptions();
+  updateRollProgress();
+  INTERNAL_CHECK.then(function(result) {
+    if (!result.pass) lockOut(result.message);
+  }, function(err) {
+    lockOut(err.message);
+  });
+});
+</script>
+</body>
+</html>
