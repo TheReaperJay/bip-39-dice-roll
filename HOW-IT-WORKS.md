@@ -1,28 +1,6 @@
-```
-                                     ░▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░
-                            ░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░░░
-                     ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░
-                ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░
-            ░▒▒▒▒▒█████▒▒▒▒▒█░░░░░░░░░░░░░░░░░░░░░░░░▒▒▒▒▒▒▒██░
-         ▒▒▒██████░░█       █                          ░░░░░░░█
-      ███████       █                                     ░░░░
-   █████   ██       █                                    ░░░░
-   █       ██                                            ░░░░
-  ███      ██                                           ░░░░
-  ██       ██                                           ░░░░
-  ███       █                                          ░░░░
-  ███                                                 ░░░░
-  ██       ██                                         ░░░░
-  ██                                                 ░░░░
-   █                                                 ░░░░
-                                                    ░░░░
-                                                    ░░░
-  ███                                              ░░░░
-  ███                                              ░░░
+# How it works
 
-           T H E   R E A P E R ' S   L E D G E R
-                     how the ledger works
-```
+*The Reaper's Ledger, step by step.*
 
 <p align="center"><img src="media/warning.svg" alt="Do not trust this repo. Verify the code yourself. Have an LLM review index.html before you use it. Then make your seed offline: an old laptop with no Wi-Fi, or Tails." width="100%"></p>
 

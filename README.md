@@ -1,32 +1,6 @@
-```
-                            ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░
-                     ▒▒▒▒▒▒▓▓▓▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒░
-                 ▒▒▒▒▒▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
-             ▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░▒
-           ▒▒▒▒▒▒▒▒░░░░░░░░░░░░░░░░░░░░░    ░░░░▒▒▒▒▒▒▒▒▒▒
-        ░▒▒▒▒▒▒░ ░░░░░░░░░░░░░░░░░░░░░░░░░░       ░░░▒▒▒▒▒
-     ░░▒▒▒░    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░       ▒▒▒▒▒
-    ▒▒░░      ░░░░░░░░░░░░        ░░░░░░░░░░░░      ▒▒▒▒▒
-      ░     ░░░░░░░░░░                ░░░░░░░░░░    ▒▒▒▒▒
-           ░░░░░░░░░      ░▒▒▒▒▒▒░      ░░░░░░░░░  ▒▒▒▒▒▒
-      ░   ░░░░░░░░░    ░▓▓▓▓▓▓▓▓▓▓▓▒░    ░░░░░░░░  ▒▒▒▒▒
-          ░░░░░░░░    ▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒    ░░░░░░░░ ▒▒▒▒▒
-         ░░░░░░░░░   ▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒   ░░░░░░░░░▒▒▒▒▒
-         ░░░░░░░░   ░▓▓▓▒░░░▓▓▓▓░░░▒▓▓▓░   ░░░░░░░░▒▒▒▒▒
-        ░░░░░░░░░   ░▓▓▓░▒▓░░▓▓░░▓▒░▓▓▓░   ░░░░░░░░▒▒▒▒
-        ░░░░░░░░░   ░▓▓▓▒░░░▒▓▓▒░░░▒▓▓▓░   ░░░░░░░░░▒▒▒
-        ░░░░░░░░░    ▒▓▓▓▓▓▓▓▒▒▓▓▓▓▓▓▓▒    ░░░░░░░░░▒▒▒
-        ░░░░░░░░░     ▒▓▓▓▓▓▓▒▒▓▓▓▓▓▓▒     ░░░░░░░░░▒▒
-        ░░░░░░░░░░     ░▒▓▓▓▓▓▓▓▓▓▓▒░     ░░░░░░░░░░▒▒
-        ░░░░░░░░░░       ▓▓▓▒▓▓▒▓▓▓      ░░░░░░░░░░░▒▒
-       ░░░░░░░░░░░░      ▓▓▓▓▓▓▓▓▓▓      ░░░░░░░░░░░░
-       ░░░░░░░░░░░░░     ░░░░░░░░░░    ░░░░░░░░░░░░░░
-       ░░░░░░░░░░░░░░░                ░░░░░░░░░░░░░░░
-       ░░░░░░░░░░░░░░░░░░          ░░░░░░░░░░░░░░░░░░
+# The Reaper's Ledger
 
-           T H E   R E A P E R ' S   L E D G E R
-        dice in · phrase out · nothing leaves the page
-```
+*dice in · phrase out · nothing leaves the page*
 
 One HTML file that turns physical dice rolls into a BIP39 recovery phrase, offline.
 
@@ -81,11 +55,18 @@ None of this helps if the machine itself is compromised. That's why you go offli
 
 ## I. Cast the bones
 
+<p align="center"><img src="media/dice.png" alt="The dice card: seed length, compatibility type, six dice faces, rolls in numbered groups of five, and Forge Seed disabled until enough rolls are in." width="720"></p>
+
 1. Open `index.html` on the offline machine (tested in Chrome and Firefox).
 2. Pick the seed length and the compatibility type.
 3. Roll one die at a time and click the face that landed up, or press 1–6. Backspace or "Undo last roll" removes the last roll.
 4. When enough rolls are in, "Forge Seed" unlocks. Press it.
 5. Write the words down in order and check them against the screen.
+
+   <p align="center"><img src="media/phrase.png" alt="The recovery phrase card: 24 numbered words and the entropy hex." width="720"></p>
+
+   *Screenshots use test rolls (`123456` repeated). This phrase is public: never use it, or any phrase you've seen published.*
+
 6. Press "Reap everything", close the browser, and power the machine off.
 
 Roll properly: one die, thrown hard against a backstop, and enter exactly what lands. The page can't tell whether your dice are fair.
@@ -107,7 +88,11 @@ Both give 12 words (128-bit) or 24 words (256-bit). Minimum rolls: 50 for 12 wor
 
 Every BIP39 word has a number from 1 to 2048. A 12-column steel plate stores that number as punched dots in columns worth 2048, 1024, 512 … 2, 1. Below the phrase, the page shows which columns to punch for each word and lists the punched values so you can check each row adds up. See [HOW-IT-WORKS.md](HOW-IT-WORKS.md#4-bound-in-steel-the-steel-plate-guide).
 
+<p align="center"><img src="media/steel.png" alt="The steel plate stamping guide: one row per word with its number, a filled dot on each column to punch, and the punched values written out as a sum check." width="720"></p>
+
 ## IV. Reap everything
+
+<p align="center"><img src="media/reap.png" alt="The Reap everything confirmation: a bloodied scythe over the dimmed page, with Cancel and Reap buttons." width="720"></p>
 
 When the words are written down (and stamped), press "Reap everything" and confirm. The page wipes the rolls, phrase, hex and steel guide and overwrites the clipboard. Closing the tab wipes them too. Then power the machine off.
 
